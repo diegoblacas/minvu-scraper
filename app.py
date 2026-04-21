@@ -10,32 +10,30 @@ def scrape_minvu(max_paginas=3):
 
     try:
         while pagina <= max_paginas:
-            url = f"https://condominios-api.minvu.cl/administradores?page={pagina}&limit=100&select=Rut&select=Nombres&select=ApellidoUno&select=ApellidoDos&select=Tipo&select=Estado&select=RegionesPrestacionServicio"
+            url = f"https://condominios-api.minvu.cl/administradores?page={pagina}&limit=100"
 
-            response = requests.get(url, timeout=10)
-            print("🔥 PRIMEROS 1000 CARACTERES:")
-            print(response.text[:1000])
+            headers = {
+                "User-Agent": "Mozilla/5.0",
+                "Accept": "application/json"
+            }
+
+            response = requests.get(url, headers=headers, timeout=10)
             data = response.json()
 
-            # 🔥 CLAVE: usar "content" en vez de "data"
-            resultados = data.get("content", [])
+            # ✅ CLAVE REAL
+            resultados = data.get("data", [])
 
             if not resultados:
                 break
 
             for item in resultados:
-                nombre = " ".join(filter(None, [
-                    item.get("Nombres"),
-                    item.get("ApellidoUno"),
-                    item.get("ApellidoDos")
-                ]))
-
                 administradores.append({
-                    "nombre": nombre,
-                    "rut": item.get("Rut"),
-                    "tipo": item.get("Tipo"),
-                    "estado": item.get("Estado"),
-                    "regiones": item.get("RegionesPrestacionServicio")
+                    "nombre": item.get("nombre_completo"),
+                    "rut": item.get("rut"),
+                    "tipo": item.get("tipo"),
+                    "estado": item.get("estado_vigencia"),
+                    "regiones": item.get("regiones_prestacion_servicio"),
+                    "email": item.get("email")
                 })
 
                 total += 1
