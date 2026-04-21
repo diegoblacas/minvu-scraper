@@ -1,66 +1,53 @@
 from flask import Flask, jsonify
 import requests
-from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
 def scrape_minvu():
     administradores = []
-    total_encontrados = 0
-    paginas_procesadas = 0
+    total = 0
+    pagina = 1
 
     try:
-        url = "https://condominios.minvu.cl/"
-        
         while True:
+            url = f"https://condominios-api.minvu.cl/administradores?page={pagina}&limit=100"
+
             response = requests.get(url, timeout=10)
-            soup = BeautifulSoup(response.text, "html.parser")
-            paginas_procesadas += 1
+            data = response.json()
 
-            table = soup.find("table")
-            if not table:
+            resultados = data.get("data", [])
+
+            if not resultados:
                 break
 
-            rows = table.find_all("tr")
+            for item in resultados:
+                nombre = f"{item.get('Nombres','')} {item.get('ApellidoUno','')} {item.get('ApellidoDos','')}".strip()
+                
+                administradores.append({
+                    "nombre": nombre,
+                    "rut": item.get("Rut"),
+                    "tipo": item.get("Tipo"),
+                    "estado": item.get("Estado"),
+                    "regiones": item.get("RegionesPrestacionServicio")
+                })
 
-            for row in rows:
-                cells = row.find_all("td")
-                if len(cells) >= 3:
-                    nombre = cells[0].get_text(strip=True)
-                    correo = cells[1].get_text(strip=True)
-                    region = cells[2].get_text(strip=True)
+                total += 1
 
-                    total_encontrados += 1
-
-                    administradores.append({
-                        "nombre": nombre,
-                        "correo": correo,
-                        "region": region
-                    })
-
-            # Buscar link "Siguiente"
-            siguiente = soup.find("a", string=lambda x: x and "Siguiente" in x)
-
-            if siguiente and siguiente.get("href"):
-                url = "https://condominios.minvu.cl" + siguiente.get("href")
-            else:
-                break
+            pagina += 1
 
     except Exception as e:
         return {
             "error": str(e),
             "administradores": administradores,
-            "total_procesados": total_encontrados,
-            "total_registros": len(administradores),
-            "paginas_procesadas": paginas_procesadas,
+            "total_registros": total,
+            "paginas_procesadas": pagina,
             "success": False
         }
 
     return {
         "administradores": administradores,
-        "total_procesados": total_encontrados,
-        "total_registros": len(administradores),
-        "paginas_procesadas": paginas_procesadas,
+        "total_registros": total,
+        "paginas_procesadas": pagina - 1,
         "success": True
     }
 
