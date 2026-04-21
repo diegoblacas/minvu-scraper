@@ -12,7 +12,10 @@ async def scrape_minvu():
     
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
+            browser = await p.chromium.launch(
+    headless=True,
+    args=["--no-sandbox", "--disable-setuid-sandbox"]
+)
             page = await browser.new_page()
             await page.goto("https://condominios.minvu.cl/", wait_until="networkidle", timeout=30000)
             paginas_procesadas = 1
