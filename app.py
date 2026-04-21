@@ -15,7 +15,8 @@ def scrape_minvu(max_paginas=3):
             response = requests.get(url, timeout=10)
             data = response.json()
 
-            resultados = data.get("data", [])
+            # 🔥 CLAVE: usar "content" en vez de "data"
+            resultados = data.get("content", [])
 
             if not resultados:
                 break
@@ -57,7 +58,6 @@ def scrape_minvu(max_paginas=3):
 
 @app.route('/scrape', methods=['GET'])
 def scrape():
-    # Puedes controlar cuántas páginas traer desde la URL
     max_paginas = int(request.args.get("paginas", 3))
     return jsonify(scrape_minvu(max_paginas))
 
