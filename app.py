@@ -1,64 +1,72 @@
 from flask import Flask, jsonify
-from playwright.async_api import async_playwright
-import asyncio
-import re
+import requests
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
-async def scrape_minvu():
-    administradores_santiago = []
+def scrape_minvu():
+    administradores = []
     total_encontrados = 0
     paginas_procesadas = 0
-    
+
     try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(
-                headless=True,
-                args=["--no-sandbox", "--disable-setuid-sandbox"]
-            )
-            page = await browser.new_page()
-            await page.goto("https://condominios.minvu.cl/", wait_until="networkidle", timeout=30000)
-            paginas_procesadas = 1
-            
-            # Espera tabla
-            await page.wait_for_selector("table", timeout=10000)
-            content = await page.content()
-            
-            # Extrae datos del HTML
-            rows = re.findall(r'<tr[^>]*>(.*?)</tr>', content, re.DOTALL)
-            
+        url = "https://condominios.minvu.cl/"
+        
+        while True:
+            response = requests.get(url, timeout=10)
+            soup = BeautifulSoup(response.text, "html.parser")
+            paginas_procesadas += 1
+
+            table = soup.find("table")
+            if not table:
+                break
+
+            rows = table.find_all("tr")
+
             for row in rows:
-                cells = re.findall(r'<td[^>]*>(.*?)</td>', row, re.DOTALL)
+                cells = row.find_all("td")
                 if len(cells) >= 3:
-                    nombre = re.sub(r'<[^>]+>', '', cells[0]).strip()
-                    correo = re.sub(r'<[^>]+>', '', cells[1]).strip()
-                    region = re.sub(r'<[^>]+>', '', cells[2]).strip()
-                    
+                    nombre = cells[0].get_text(strip=True)
+                    correo = cells[1].get_text(strip=True)
+                    region = cells[2].get_text(strip=True)
+
                     total_encontrados += 1
-                    
-                    if "SANTIAGO" in region.upper():
-                        administradores_santiago.append({
-                            "nombre": nombre,
-                            "correo": correo,
-                            "region": region
-                        })
-            
-            await browser.close()
+
+                    administradores.append({
+                        "nombre": nombre,
+                        "correo": correo,
+                        "region": region
+                    })
+
+            # Buscar link "Siguiente"
+            siguiente = soup.find("a", string=lambda x: x and "Siguiente" in x)
+
+            if siguiente and siguiente.get("href"):
+                url = "https://condominios.minvu.cl" + siguiente.get("href")
+            else:
+                break
+
     except Exception as e:
-        return {"error": str(e), "success": False}
-    
+        return {
+            "error": str(e),
+            "administradores": administradores,
+            "total_procesados": total_encontrados,
+            "total_registros": len(administradores),
+            "paginas_procesadas": paginas_procesadas,
+            "success": False
+        }
+
     return {
-        "administradores_santiago": administradores_santiago,
-        "total_encontrados": total_encontrados,
-        "total_filtrados": len(administradores_santiago),
+        "administradores": administradores,
+        "total_procesados": total_encontrados,
+        "total_registros": len(administradores),
         "paginas_procesadas": paginas_procesadas,
         "success": True
     }
 
-@app.route('/scrape', methods=['GET'])
+@app.route('/scrape', methods=['GET', 'POST'])
 def scrape():
-    resultado = asyncio.run(scrape_minvu())
-    return jsonify(resultado)
+    return jsonify(scrape_minvu())
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
