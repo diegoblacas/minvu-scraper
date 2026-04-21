@@ -34,6 +34,6 @@ RUN pip install --upgrade pip setuptools wheel
 RUN pip install -r requirements.txt
 
 # Instalar navegadores de Playwright
-RUN playwright install --with-deps
+RUN playwright install
 
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000"]
