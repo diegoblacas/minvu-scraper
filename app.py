@@ -13,8 +13,8 @@ def scrape_minvu(max_paginas=3):
             url = f"https://condominios-api.minvu.cl/administradores?page={pagina}&limit=100&select=Rut&select=Nombres&select=ApellidoUno&select=ApellidoDos&select=Tipo&select=Estado&select=RegionesPrestacionServicio"
 
             response = requests.get(url, timeout=10)
-            print("🔥 RESPUESTA CRUDA:")
-            print(response.text)
+            print("🔥 PRIMEROS 1000 CARACTERES:")
+            print(response.text[:1000])
             data = response.json()
 
             # 🔥 CLAVE: usar "content" en vez de "data"
