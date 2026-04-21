@@ -5,12 +5,13 @@ app = Flask(__name__)
 
 def scrape_minvu(max_paginas=3):
     administradores = []
-    total = 0
     pagina = 1
 
     try:
         while pagina <= max_paginas:
-            url = f"https://condominios-api.minvu.cl/administradores?page={pagina}&limit=100"
+            url = f"https://condominios-api.minvu.cl/administradores?page={pagina}&limit=100" \
+                  f"&select=Rut&select=Nombres&select=ApellidoUno&select=ApellidoDos" \
+                  f"&select=Tipo&select=Estado&select=RegionesPrestacionServicio"
 
             response = requests.get(url, timeout=10)
             data = response.json()
@@ -31,26 +32,21 @@ def scrape_minvu(max_paginas=3):
                     "regiones": item.get("RegionesPrestacionServicio")
                 })
 
-                total += 1
-
             pagina += 1
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "success": False
-        }
+        return {"error": str(e), "success": False}
 
     return {
         "administradores": administradores,
-        "total_registros": total,
+        "total_registros": len(administradores),
         "paginas_procesadas": pagina - 1,
         "success": True
     }
 
 @app.route('/scrape', methods=['GET'])
 def scrape():
-    max_paginas = int(request.args.get("paginas", 3))  # 👈 clave
+    max_paginas = int(request.args.get("paginas", 3))
     return jsonify(scrape_minvu(max_paginas))
 
 if __name__ == '__main__':
